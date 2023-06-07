@@ -4,6 +4,7 @@
 
 set -e -u
 shopt -s extglob
+export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # Control the environment
 umask 0022
@@ -279,6 +280,8 @@ _run_once() {
 
 # Set up custom pacman.conf with custom cache and pacman hook directories.
 _make_pacman_conf() {
+    # :|
+    return
     local _cache_dirs _system_cache_dirs _profile_cache_dirs
     _system_cache_dirs="$(pacman-conf CacheDir| tr '\n' ' ')"
     _profile_cache_dirs="$(pacman-conf --config "${pacman_conf}" CacheDir| tr '\n' ' ')"
@@ -353,11 +356,13 @@ _make_packages() {
     fi
 
 
+    cp "${pacman_conf}" "${pacstrap_dir}"/etc/pacman.chroot.conf
+
     # Unset TMPDIR to work around https://bugs.archlinux.org/task/70580
     if [[ "${quiet}" = "y" ]]; then
-        env -u TMPDIR pacstrap -C "${work_dir}/${buildmode}.pacman.conf" -c -G -M -- "${pacstrap_dir}" "${buildmode_pkg_list[@]}" &> /dev/null
+        env -u TMPDIR ./archstrap "${pacstrap_dir}" "${buildmode_pkg_list[@]}" &> /dev/null
     else
-        env -u TMPDIR pacstrap -C "${work_dir}/${buildmode}.pacman.conf" -c -G -M -- "${pacstrap_dir}" "${buildmode_pkg_list[@]}"
+        env -u TMPDIR ./archstrap "${pacstrap_dir}" "${buildmode_pkg_list[@]}"
     fi
 
     if [[ -v cert_list[0] ]]; then
@@ -408,7 +413,7 @@ _make_customize_airootfs() {
         _msg_warning "customize_airootfs.sh is deprecated! Support for it will be removed in a future archiso version."
         chmod -f -- +x "${pacstrap_dir}/root/customize_airootfs.sh"
         # Unset TMPDIR to work around https://bugs.archlinux.org/task/70580
-        eval -- env -u TMPDIR arch-chroot "${pacstrap_dir}" "/root/customize_airootfs.sh"
+        eval -- env -u TMPDIR ./arch-chroot.sh "${pacstrap_dir}" "/root/customize_airootfs.sh"
         rm -- "${pacstrap_dir}/root/customize_airootfs.sh"
         _msg_info "Done! customize_airootfs.sh run successfully."
     fi
@@ -650,11 +655,13 @@ _make_bootmode_uefi-ia32.grub.esp() {
                  minicmd normal ntfs ntfscomp part_apple part_gpt part_msdos png read reboot regexp search \
                  search_fs_file search_fs_uuid search_label serial sleep tpm udf usb usbserial_common usbserial_ftdi \
                  usbserial_pl2303 usbserial_usbdebug video xfs zstd)
+    # TODO
+    # sbat isn't on my system for some reason
+    # --sbat=/usr/share/grub/sbat.csv \
     grub-mkstandalone -O i386-efi \
                       --modules="${grubmodules[*]}" \
                       --locales="en@quot" \
                       --themes="" \
-                      --sbat=/usr/share/grub/sbat.csv \
                       --disable-shim-lock \
                       -o "${work_dir}/BOOTIA32.EFI" "boot/grub/grub.cfg=${work_dir}/grub-embed.cfg"
     # Add GRUB to the list of files used to calculate the required FAT image size.
@@ -727,11 +734,12 @@ _make_bootmode_uefi-x64.grub.esp() {
                  minicmd normal ntfs ntfscomp part_apple part_gpt part_msdos png read reboot regexp search \
                  search_fs_file search_fs_uuid search_label serial sleep tpm udf usb usbserial_common usbserial_ftdi \
                  usbserial_pl2303 usbserial_usbdebug video xfs zstd)
+    # TODO
+    #--sbat=/usr/share/grub/sbat.csv \
     grub-mkstandalone -O x86_64-efi \
                       --modules="${grubmodules[*]}" \
                       --locales="en@quot" \
                       --themes="" \
-                      --sbat=/usr/share/grub/sbat.csv \
                       --disable-shim-lock \
                       -o "${work_dir}/BOOTx64.EFI" "boot/grub/grub.cfg=${work_dir}/grub-embed.cfg"
     # Add GRUB to the list of files used to calculate the required FAT image size.
@@ -1169,7 +1177,7 @@ _validate_requirements_airootfs_image_type_erofs() {
 
 _validate_common_requirements_buildmode_all() {
     if ! command -v pacman &> /dev/null; then
-        (( validation_error=validation_error+1 ))
+        #(( validation_error=validation_error+1 ))
         _msg_error "Validating build mode '${_buildmode}': pacman is not available on this host. Install 'pacman'!" 0
     fi
     if ! command -v find &> /dev/null; then
@@ -1627,7 +1635,7 @@ _set_overrides() {
     if [[ -v override_pacman_conf ]]; then
         pacman_conf="$override_pacman_conf"
     elif [[ -z "$pacman_conf" ]]; then
-        pacman_conf="/etc/pacman.conf"
+        pacman_conf="pacman.conf"
     fi
     pacman_conf="$(realpath -- "$pacman_conf")"
     [[ ! -v override_pkg_list ]] || pkg_list+=("${override_pkg_list[@]}")
@@ -1725,11 +1733,11 @@ _make_pkglist() {
     _msg_info "Creating a list of installed packages on live-enviroment..."
     case "${buildmode}" in
         "bootstrap")
-            pacman -Q --sysroot "${pacstrap_dir}" > "${pacstrap_dir}/pkglist.${arch}.txt"
+            ./arch-chroot.sh "${pacstrap_dir}" pacman -Q > "${pacstrap_dir}/pkglist.${arch}.txt"
             ;;
         "iso"|"netboot")
             install -d -m 0755 -- "${isofs_dir}/${install_dir}"
-            pacman -Q --sysroot "${pacstrap_dir}" > "${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
+            ./arch-chroot.sh "${pacstrap_dir}" pacman -Q > "${isofs_dir}/${install_dir}/pkglist.${arch}.txt"
             ;;
     esac
     _msg_info "Done!"

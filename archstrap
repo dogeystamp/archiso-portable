@@ -1,6 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC2016 Expressions don't expand in single quotes, use double quotes for that | mirrors accept vars
 set -eEuo pipefail
+set -x
 
 (( $# ))||{ printf '\e[31mx\e[m: %s\n' 'A mountpoint must be specified to bootstrap Arch Linux (e.g. /tmp)'; exit 1; }
 [[ -d $1 ]]||{ printf '\e[31mx\e[m: %s\n' "Mountpoint $1 does not exist"; exit 1; }
@@ -10,8 +11,8 @@ mnt="$1" rootFS="$1"; shift
 packages=('dosfstools' 'ntfs-3g' 'parted' 'gdisk' "$@")
 tarBall='archlinux-bootstrap-x86_64.tar.gz' tarSig="$tarBall.sig"
 officialURL="https://archlinux.org" globalMirror="https://geo.mirror.pkgbuild.com"
+globalMirror="https://mirror.csclub.uwaterloo.ca/archlinux"
 
-arch_chroot(){ : "$rootFS"; mount --bind "$_" "$_"; "$_/bin/arch-chroot" "$_" "$@"; umount -R "$rootFS"; }
 get_tarball(){ for _; do curl "$_" >"$mnt"/"${_##*/}"; done; }
 verify_unpack(){
   #if gpg --verify "$2" "$1"; then printf '\e[32m>\e[m: %s\n' 'Signature verified'
@@ -19,16 +20,17 @@ verify_unpack(){
   tar -xzf "$1" --strip-components=1 -C "${1%/*}" --numeric-owner; rm "${1:?}" "${2}"
 }
 
-if [ -z "$(ls $rootFS)" ]; then
+# kind of terrible test for system existing
+if [ ! -d "$rootFS"/var ]; then
     printf '\e[33m!\e[m: %s\n' 'Downloading bootstrap tarball & signature..'
     : 'iso/latest'; get_tarball "$globalMirror/$_/$tarBall" "$officialURL/$_/$tarSig"
     printf '\e[33m!\e[m: %s\n' 'Target downloaded. Verifying tarball GPG signature..'
     verify_unpack "$mnt/$tarBall" "$mnt/$tarSig"
     printf '\e[32m>\e[m: %s\n' "Bootstrapped tarball unpacked to $rootFS"
 
-    cp chroot.sh "$rootFS/";
     printf 'Server = %s/$repo/os/$arch\n' "$globalMirror" >>"$rootFS/etc/pacman.d/mirrorlist"
     printf '\e[32m>\e[m: %s\n' 'Created necessary chroot system files'
 fi
 
-arch_chroot /bin/bash chroot.sh "$mnt" "${packages[@]}"
+cp chroot.sh "$rootFS/";
+./arch-chroot.sh "$mnt" /bin/bash chroot.sh "${packages[@]}"
