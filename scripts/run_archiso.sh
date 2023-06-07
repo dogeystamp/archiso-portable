@@ -44,12 +44,17 @@ cleanup_working_dir() {
     fi
 }
 
+EDK2_OVMF="/usr/share/edk2-ovmf/x64"
+if [ ! -d "${EDK2_OVMF}" ]; then
+    EDK2_OVMF="/usr/share/edk2-ovmf"
+fi
+
 copy_ovmf_vars() {
-    if [[ ! -f '/usr/share/edk2-ovmf/x64/OVMF_VARS.fd' ]]; then
+    if [[ ! -f "${EDK2_OVMF}/OVMF_VARS.fd" ]]; then
         printf 'ERROR: %s\n' "OVMF_VARS.fd not found. Install edk2-ovmf."
         exit 1
     fi
-    cp -av -- '/usr/share/edk2-ovmf/x64/OVMF_VARS.fd' "${working_dir}/"
+    cp -av -- "${EDK2_OVMF}/OVMF_VARS.fd" "${working_dir}/"
 }
 
 check_image() {
@@ -68,9 +73,9 @@ run_image() {
         copy_ovmf_vars
         if [[ "${secure_boot}" == 'on' ]]; then
             printf '%s\n' 'Using Secure Boot'
-            local ovmf_code='/usr/share/edk2-ovmf/x64/OVMF_CODE.secboot.fd'
+            local ovmf_code="${EDK2_OVMF}/OVMF_CODE.secboot.fd"
         else
-            local ovmf_code='/usr/share/edk2-ovmf/x64/OVMF_CODE.fd'
+            local ovmf_code="${EDK2_OVMF}/OVMF_CODE.fd"
         fi
         qemu_options+=(
             '-drive' "if=pflash,format=raw,unit=0,file=${ovmf_code},read-only=on"
