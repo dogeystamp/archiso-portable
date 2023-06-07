@@ -4,14 +4,26 @@ archiso
 
 The archiso project features scripts and configuration templates to build installation media (*.iso* images and
 *.tar.gz* bootstrap images) as well as netboot artifacts for BIOS and UEFI based systems on the x86_64 architecture.
-Currently creating the images is only supported on Arch Linux but may work on other operating systems as well.
+
+Normally, creating the images is only supported on Arch Linux.
+However, **this version of archiso works on other distributions.**
+
+Do note that I do not hold myself to the standards that the Arch team does for archiso;
+this code is definitely not production-grade, and features are definitely missing.
+If there are bugs, feel free to report or fix them.
+
+This project makes use of a modified `archstrap <https://github.com/wick3dr0se/archstrap>`_ for obtaining an Arch root
+filesystem. This means pacstrap isn't necessary.
+
+Pacman is provided by the Arch bootstrap system.
+
+This repo also includes a version of the releng profile customized with my dotfiles, available under ``configs/dogey``.
 
 Requirements
 ============
 
 The following packages need to be installed to be able to create an image with the included scripts:
 
-* arch-install-scripts
 * awk
 * dosfstools
 * e2fsprogs
@@ -23,7 +35,6 @@ The following packages need to be installed to be able to create an image with t
 * libisoburn
 * mtools
 * openssl
-* pacman
 * sed
 * squashfs-tools
 
