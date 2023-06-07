@@ -11,7 +11,6 @@ mnt="$1" rootFS="$1"; shift
 packages=('dosfstools' 'ntfs-3g' 'parted' 'gdisk' "$@")
 tarBall='archlinux-bootstrap-x86_64.tar.gz' tarSig="$tarBall.sig"
 officialURL="https://archlinux.org" globalMirror="https://geo.mirror.pkgbuild.com"
-globalMirror="https://mirror.csclub.uwaterloo.ca/archlinux"
 
 get_tarball(){ for _; do curl "$_" >"$mnt"/"${_##*/}"; done; }
 verify_unpack(){
