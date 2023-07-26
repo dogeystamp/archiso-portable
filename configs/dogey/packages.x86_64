@@ -154,6 +154,7 @@ nvidia-dkms
 mesa
 vulkan-radeon
 ttf-jetbrains-mono
+ttf-ibm-plex
 acpi
 opendoas
 pulseaudio
@@ -164,3 +165,4 @@ sxiv
 git
 freetype2
 pkgconf
+xclip
